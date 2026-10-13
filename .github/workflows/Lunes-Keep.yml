@@ -12,7 +12,7 @@ jobs:
     name: 执行保活
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # 保活提交 time.txt 需要写权限
       actions: write
     concurrency:
       group: lunes-keepalive
@@ -72,3 +72,13 @@ jobs:
           delete_workflow_pattern: ${{ github.workflow }}
           retain_days: 0
           keep_minimum_runs: 3
+
+      # 每次运行后提交 time.txt，让仓库保持活跃，避免 GitHub 因 60 天无提交而停用定时任务
+      - name: 保活提交
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          date -u '+%F %T UTC' > time.txt
+          git add time.txt
+          git diff --cached --quiet || (git commit -m "chore: keepalive $(date -u '+%F')" && git push origin main)
